@@ -30,6 +30,11 @@ PIECES = (
 )
 
 
+def normalized_tuple(coords: np.ndarray) -> Tuple[Tuple[int, ...], ...]:
+  """A canonicalized and hashable version of a set of coordinates."""
+  return tuple(sorted(tuple(p) for p in coords))
+
+
 def all_2d_rotations_and_translations(definition: List[Tuple[int, int]]
     ) -> List[np.ndarray]:
   """All possible displacements of a piece which contain (0, 0)."""
@@ -78,11 +83,6 @@ def butterfly_board() -> np.ndarray:
   board[3, [0, 1]] = -1
   board = board + board[::-1, ::-1]
   return board
-
-
-def normalized_tuple(coords: np.ndarray) -> Tuple[Tuple[int, ...], ...]:
-  """A canonicalized and hashable version of a set of coordinates."""
-  return tuple(sorted(tuple(p) for p in coords))
 
 
 class Lonpos2D:
