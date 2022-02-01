@@ -11,7 +11,7 @@ setup(
     url='https://github.com/geraschenko/tree/master/lonpos_solver',
     packages=['lonpos_solver'],
     install_requires=[
-        'absl-py',
+        'matplotlib',
         'numpy',
     ],
     python_requires='>=3.6',

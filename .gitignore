@@ -1,0 +1,9 @@
+__pycache__
+.ipynb_checkpoints/
+
+# virtualenv / distribution / packaging
+bin/
+lib/
+share/
+lonpos_solver.egg-info/
+pyvenv.cfg
