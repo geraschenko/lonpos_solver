@@ -88,22 +88,28 @@ def normalized_tuple(coords: np.ndarray) -> Tuple[Tuple[int, ...], ...]:
 class Lonpos2D:
   """A Lonpos solver for 2D boards."""
 
-  def __init__(self, board: Optional[str] = None):
-    boards = {'triangle': triangle_board,
-              'arrowhead': arrowhead_board,
-              'butterfly': butterfly_board,
-              }
-    self.board = boards.get(board, rectangle_board)()
+  def __init__(self, board_type: Optional[str] = None):
     self.piece = {i + 1: p for i, p in enumerate(PIECES)}
     self.piece_idx = {p.name: i for i, p in self.piece.items()}
-    self.remaining_pieces = [p.name for p in PIECES]
-
     orientations = {}
     for i, piece in self.piece.items():
       coord_list = all_2d_rotations_and_translations(piece.definition)
       orientations[i] = tuple(np.array(coords) for coords in coord_list)
     self.orientations = orientations
 
+    boards = {'triangle': triangle_board,
+              'arrowhead': arrowhead_board,
+              'butterfly': butterfly_board,
+              }
+    self.set_board(boards.get(board_type, rectangle_board)())
+
+
+  def set_board(self, board: np.ndarray) -> None:
+    """Sets a board position."""
+    self.board = board.copy()
+    used_indices = np.unique(board)
+    self.remaining_pieces = [p.name for i, p in self.piece.items()
+                                 if i not in used_indices]
 
   def completed(self) -> bool:
     """True if the board is completed."""
