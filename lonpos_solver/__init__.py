@@ -52,7 +52,7 @@ def all_2d_rotations_and_translations(definition: List[Tuple[int, int]]
 
 
 def rectangle_board() -> np.ndarray:
-  return np.zeros((5, 11), dtype='uint8')
+  return np.zeros((11, 5), dtype='uint8')
 
 
 def triangle_board() -> np.ndarray:
@@ -71,7 +71,7 @@ def arrowhead_board() -> np.ndarray:
   board[[1, 2, 3, 7, 8], 1] = -1
   board[2, [2, 8]] = -1
   board[[2, 8], 2] = -1
-  board[6, 5] = -1
+  board[5, 6] = -1
   return board
 
 
@@ -117,14 +117,14 @@ class Lonpos2D:
 
 
   def in_bounds(self, x: int, y: int) -> bool:
-    return 0 <= x < self.board.shape[1] and 0 <= y < self.board.shape[0]
+    return 0 <= x < self.board.shape[0] and 0 <= y < self.board.shape[1]
 
 
   def next_pos(self) -> Tuple[int, int]:
     # Returns an empty spot with 1 neighbor if possible, 2 neighbors otherwise.
     candidate = None
-    empty = [(x, y) for x in range(self.board.shape[1])
-                 for y in range(self.board.shape[0]) if not self.board[y, x]]
+    empty = [(x, y) for x in range(self.board.shape[0])
+                 for y in range(self.board.shape[1]) if not self.board[x, y]]
     offsets = [(1, 0), (0, 1), (-1, 0), (0, -1)]
     for p in empty:
       nbrs = [(p[0] + i, p[1] + j) for i, j in offsets]
@@ -139,11 +139,11 @@ class Lonpos2D:
 
   def can_place(self, xy: np.ndarray) -> bool:
     return (all(self.in_bounds(x, y) for x, y in xy) and
-            not self.board[xy[:, 1], xy[:, 0]].any())
+            not self.board[xy[:, 0], xy[:, 1]].any())
 
 
   def _place(self, xy: np.ndarray, index: int) -> None:
-    self.board[xy[:, 1], xy[:, 0]] = index
+    self.board[xy[:, 0], xy[:, 1]] = index
 
 
   def place(self, xy: np.ndarray, name: str) -> None:
@@ -158,7 +158,7 @@ class Lonpos2D:
       index = self.piece_idx[name]
       if not (self.board == index).any():
         raise ValueError(f'{index} is not on the board')
-      y, x = (self.board == index).nonzero()
+      x, y = (self.board == index).nonzero()
       xy = np.array(list(zip(x, y)))
       self._place(xy, 0)
       self.remaining_pieces.append(name)
@@ -170,14 +170,14 @@ class Lonpos2D:
     if board is None:
       board = self.board
     ax.set_facecolor('lightgray')
-    ax.set_xlim(-.6, board.shape[1] - .4)
-    ax.set_ylim(-.6, board.shape[0] - .4)
+    ax.set_xlim(-.6, board.shape[0] - .4)
+    ax.set_ylim(-.6, board.shape[1] - .4)
     ax.set_aspect('equal')
     ax.get_xaxis().set_visible(False)
     ax.get_yaxis().set_visible(False)
-    for x in range(board.shape[1]):
-      for y in range(board.shape[0]):
-        idx = board[y, x]
+    for x in range(board.shape[0]):
+      for y in range(board.shape[1]):
+        idx = board[x, y]
         if idx == 255:
           pass
         elif idx:
