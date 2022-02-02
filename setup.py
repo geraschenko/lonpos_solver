@@ -4,7 +4,7 @@ from setuptools import setup
 
 setup(
     name='lonpos_solver',
-    version='0.0',
+    version='0.1',
     description='A Lonpos solver.',
     author='Anton Geraschenko',
     author_email='geraschenko@gmail.com',
