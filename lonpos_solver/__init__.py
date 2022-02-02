@@ -40,15 +40,16 @@ def all_2d_rotations_and_translations(definition: List[Tuple[int, int]]
   """All possible displacements of a piece which contain (0, 0)."""
   rot90 = np.array([[0, -1], [1, 0]])
   flip = np.array([[-1, 0], [0, 1]])
-  xys = []
+  xy = []
   coords = np.array(definition)
   for _ in range(2):
     for _ in range(4):
       for offset in coords:
-        xys.append(coords - offset)
+        xy.append(coords - offset)
       coords = coords @ rot90
     coords = coords @ flip
-  return [np.array(xy) for xy in set(normalized_tuple(p) for p in xys)]
+  xy = set(normalized_tuple(p) for p in xy)  # de-dupe
+  return [np.array(p) for p in xy]
 
 
 def rectangle_board() -> np.ndarray:
@@ -146,25 +147,37 @@ class Lonpos2D:
     self.board[xy[:, 0], xy[:, 1]] = index
 
 
-  def place(self, xy: np.ndarray, name: str) -> None:
+  def place(self, name: str, xy: np.ndarray) -> None:
+    """Adds the given piece to the board at the given coordinates."""
     assert name in self.remaining_pieces, f'piece {name} not available'
+    index = self.piece_idx[name]
+    valid_xy = set(normalized_tuple(xy_) for xy_ in self.orientations[index])
+    assert normalized_tuple(xy - xy[0]) in valid_xy, (
+        f'Not a valid orientation of piece {name}:\n{xy}')
     assert self.can_place(xy), f'cannot place at {xy}'
     self._place(xy, self.piece_idx[name])
     self.remaining_pieces.remove(name)
 
 
+  def get_xy(self, name):
+    """Returns the coordinates of a piece on the board."""
+    index = self.piece_idx[name]
+    if not (self.board == index).any():
+      raise ValueError(f'{name} is not on the board')
+    x, y = (self.board == index).nonzero()
+    return np.array(list(zip(x, y)))
+
+
   def unplace(self, *names):
+    """Removes the given pieces from the board."""
     for name in names:
-      index = self.piece_idx[name]
-      if not (self.board == index).any():
-        raise ValueError(f'{index} is not on the board')
-      x, y = (self.board == index).nonzero()
-      xy = np.array(list(zip(x, y)))
+      xy = self.get_xy(name)
       self._place(xy, 0)
       self.remaining_pieces.append(name)
 
 
   def plot(self, board: Optional[np.ndarray] = None, ax=None) -> None:
+    """Displays the board."""
     if ax is None:
       ax = plt.gca()
     if board is None:
