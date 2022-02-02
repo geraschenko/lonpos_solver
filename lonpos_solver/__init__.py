@@ -349,7 +349,7 @@ class Lonpos3D:
     if board is None:
       board = self.board
     if ax is None:
-      plt.figure(figsize=(5, 10))
+      plt.figure(figsize=(2.5, 6))
       ax = plt.gca()
     ax.set_xlim(-.6, board.shape[0] - .4)
     ax.set_ylim(-.6, self.drawn_position(0, 0, board.shape[2] - 1)[1] + .6)
