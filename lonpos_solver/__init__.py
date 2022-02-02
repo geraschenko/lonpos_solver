@@ -122,6 +122,7 @@ class Lonpos2D:
 
 
   def next_pos(self) -> Tuple[int, int]:
+    """A good candidate position on the board to try to fill."""
     # Returns an empty spot with 1 neighbor if possible, 2 neighbors otherwise.
     candidate = None
     empty = [(x, y) for x in range(self.board.shape[0])
@@ -203,6 +204,7 @@ class Lonpos2D:
 
 
   def solutions(self) -> Iterator[np.ndarray]:
+    """All solutions from the given position."""
     if not self.remaining_pieces:
       yield self.board.copy()
     else:
@@ -221,4 +223,170 @@ class Lonpos2D:
           self.remaining_pieces.append(name)
 
 
-# TODO: Add 3D game
+def all_3d_rotations_and_translations(definition: List[Tuple[int, int]]
+    ) -> List[np.ndarray]:
+  """All possible displacements of a piece which contain (0, 0, 0)."""
+  result_2d = all_2d_rotations_and_translations(definition)
+  # Pieces are either horizontal, or in one of two vertical planes.
+  result = [xy @ np.array([[1, 0, 0], [0, 1, 0]]) for xy in result_2d]
+  result.extend([xy @ np.array([[0, -1, 1], [-1, 0, 1]]) for xy in result_2d])
+  result.extend([xy @ np.array([[0, 0, 1], [-1, -1, 1]]) for xy in result_2d])
+  return result
+
+
+def pyramid_board():
+  board = np.zeros((5, 5, 5), dtype='uint8')
+  for z in range(1, 5):
+    board[-z:, :, z] = -1
+    board[:, -z:, z] = -1
+  return board
+
+
+class Lonpos3D:
+  """A Lonpos solver for the pyramid."""
+
+  def __init__(self):
+    self.piece = {i + 1: p for i, p in enumerate(PIECES)}
+    self.piece_idx = {p.name: i for i, p in self.piece.items()}
+    orientations = {}
+    for i, piece in self.piece.items():
+      coord_list = all_3d_rotations_and_translations(piece.definition)
+      orientations[i] = tuple(np.array(coords) for coords in coord_list)
+    self.orientations = orientations
+    self.set_board(pyramid_board())
+
+
+  def set_board(self, board: np.ndarray) -> None:
+    """Sets a board position."""
+    self.board = board.copy()
+    used_indices = np.unique(board)
+    self.remaining_pieces = [p.name for i, p in self.piece.items()
+                                 if i not in used_indices]
+
+  def completed(self) -> bool:
+    """True if the board is completed."""
+    return len(self.remaining_pieces) == 0 and (self.board != 0).all()
+
+
+  def in_bounds(self, x: int, y: int, z: int) -> bool:
+    return (0 <= x < self.board.shape[0] and
+            0 <= y < self.board.shape[1] and
+            0 <= z < self.board.shape[2])
+
+
+  def next_pos(self) -> Tuple[int, int]:
+    """A good candidate position on the board to try to fill."""
+    # Returns an empty spot with few-ish empty neighbors.
+    candidate = None
+    candidate_neighbors = 12
+    empty = [(x, y, z) for x in range(self.board.shape[0])
+                 for y in range(self.board.shape[1])
+                 for z in reversed(range(self.board.shape[2]))  # top first
+                 if not self.board[x, y, z]]
+    offsets = [(1, 0, 0), (0, 1, 0), (-1, 0, 0), (0, -1, 0),
+               (-1, -1, 1), (-1, 0, 1), (0, -1, 1), (0, 0, 1),
+               (-1, -1, -1), (-1, 0, -1), (0, -1, -1), (0, 0, -1)]
+    for p in empty:
+      nbrs = [(p[0] + i, p[1] + j, p[2] + k) for i, j, k in offsets]
+      nbrs = [n for n in nbrs if self.in_bounds(n[0], n[1], n[2])]
+      num_neighbors = sum(n in empty for n in nbrs)
+      if num_neighbors in [0, 1, 2]:
+        # Good enough.
+        return p
+      if candidate is None or num_neighbors < candidate_neighbors:
+        candidate = p
+        candidate_neighbors = num_neighbors
+    return candidate
+
+
+  def can_place(self, xyz: np.ndarray) -> bool:
+    return (all(self.in_bounds(x, y, z) for x, y, z in xyz) and
+            not self.board[xyz[:, 0], xyz[:, 1], xyz[:, 2]].any())
+
+
+  def _place(self, xyz: np.ndarray, index: int) -> None:
+    self.board[xyz[:, 0], xyz[:, 1], xyz[:, 2]] = index
+
+
+  def place(self, name: str, xyz: np.ndarray) -> None:
+    """Adds the given piece to the board at the given coordinates."""
+    assert name in self.remaining_pieces, f'piece {name} not available'
+    index = self.piece_idx[name]
+    valid_xyz = set(normalized_tuple(xyz_) for xyz_ in self.orientations[index])
+    assert normalized_tuple(xyz - xyz[0]) in valid_xyz, (
+        f'Not a valid orientation of piece {name}:\n{xyz}')
+    assert self.can_place(xyz), f'cannot place at {xyz}'
+    self._place(xyz, self.piece_idx[name])
+    self.remaining_pieces.remove(name)
+
+
+  def get_xyz(self, name):
+    """Returns the coordinates of a piece on the board."""
+    index = self.piece_idx[name]
+    if not (self.board == index).any():
+      raise ValueError(f'{name} is not on the board')
+    x, y, z = (self.board == index).nonzero()
+    return np.array(list(zip(x, y, z)))
+
+
+  def unplace(self, *names):
+    """Removes the given pieces from the board."""
+    for name in names:
+      xyz = self.get_xyz(name)
+      self._place(xyz, 0)
+      self.remaining_pieces.append(name)
+
+
+  def drawn_position(self, x, y, z):
+    """The 2D position of a 3D location for display purposes."""
+    xx = (x + .5 * z)
+    yy = (0.7 * y + (4.5 - .3 * z) * z)
+    return xx, yy
+
+
+  def plot(self, board: Optional[np.ndarray] = None, ax=None) -> None:
+    """Displays the board."""
+    if board is None:
+      board = self.board
+    if ax is None:
+      plt.figure(figsize=(5, 10))
+      ax = plt.gca()
+    ax.set_xlim(-.6, board.shape[0] - .4)
+    ax.set_ylim(-.6, self.drawn_position(0, 0, board.shape[2] - 1)[1] + .6)
+    ax.set_aspect('equal')
+    ax.axis('off')
+    for z in range(board.shape[2]):
+      for y in reversed(range(board.shape[1])):  # draw back bubbles first
+        for x in range(board.shape[0]):
+          idx = board[x, y, z]
+          xx, yy = self.drawn_position(x, y, z)
+          if idx == 255:
+            pass
+          elif idx:
+            piece = self.piece[idx]
+            ax.add_patch(plt.Circle((xx, yy), 0.5, facecolor=piece.color,
+                edgecolor='black', clip_on=False))
+            ax.text(xx, yy, piece.name, ha='center', va='center')
+          else:
+            ax.add_patch(plt.Circle((xx, yy), 0.3, color='lightgray',
+                clip_on=False))
+
+
+  def solutions(self) -> Iterator[np.ndarray]:
+    """All solutions from the given position."""
+    if not self.remaining_pieces:
+      yield self.board.copy()
+    else:
+      pos = self.next_pos()
+      for name in self.remaining_pieces.copy():
+        index = self.piece_idx[name]
+        for xyz in self.orientations[index]:
+          xyz = xyz + pos
+          if not self.can_place(xyz):
+            continue
+          self._place(xyz, index)
+          self.remaining_pieces.remove(name)
+          for solution in self.solutions():
+            yield solution
+          self._place(xyz, 0)
+          self.remaining_pieces.append(name)
