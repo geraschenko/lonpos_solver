@@ -7,5 +7,9 @@ with as few empty neighbors as possible, and try all possible ways to fill that
 spot. This is basically the strategy I find myself using when I do these
 things, and it seems pretty good (i.e. it identifies dead ends pretty quickly).
 
+It turns out that this [puzzle-a-day
+calendar](https://www.dragonfjord.com/product/a-puzzle-a-day/) is exactly the
+same kind of puzzle, so we solve those too.
+
 See [Lonpos_solver_demo.ipynb](Lonpos_solver_demo.ipynb) for some pretty
 pictures.

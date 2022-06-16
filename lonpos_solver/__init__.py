@@ -103,6 +103,10 @@ class Lonpos2D:
               'butterfly': butterfly_board,
               }
     self.set_board(boards.get(board_type, rectangle_board)())
+    self.board_type = board_type
+
+  def __repr__(self):
+    return f'Lonpos2D({self.board_type!r})'
 
 
   def set_board(self, board: np.ndarray) -> None:
@@ -222,6 +226,11 @@ class Lonpos2D:
           self._place(xy, 0)
           self.remaining_pieces.append(name)
 
+  def solve(self) -> None:
+    """Sets the board to the next found solution."""
+    self.board = next(self.solutions())
+    self.remaining_pieces = []
+
 
 def all_3d_rotations_and_translations(definition: List[Tuple[int, int]]
     ) -> List[np.ndarray]:
@@ -254,6 +263,9 @@ class Lonpos3D:
       orientations[i] = tuple(np.array(coords) for coords in coord_list)
     self.orientations = orientations
     self.set_board(pyramid_board())
+
+  def __repr__(self):
+    return 'Lonpos3D()'
 
 
   def set_board(self, board: np.ndarray) -> None:
@@ -390,3 +402,80 @@ class Lonpos3D:
             yield solution
           self._place(xyz, 0)
           self.remaining_pieces.append(name)
+
+
+################################################################################
+# A-puzzle-a-day calendar: https://www.dragonfjord.com/product/a-puzzle-a-day  #
+################################################################################
+
+def calendar_pieces():
+  pieces = [p for p in PIECES if p.name in ['B', 'C', 'D', 'E', 'G', 'I']]
+  pieces += [
+      Piece('Z', 'orange', ((0, 0), (1, 0), (1, 1), (1, 2), (2, 2))),
+      Piece('O', 'magenta', ((0, 0), (1, 0), (2, 0), (0, 1), (1, 1), (2, 1)))
+  ]
+  return pieces
+
+def calendar_board_text():
+  txt = np.concatenate(
+    [np.array([['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', ''],
+               ['Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', '']]),
+     np.array([str(x) for x in range(1, 36)]).reshape((5, 7))], axis=0)
+  txt[-1, -4:] = ''
+  txt = np.rot90(txt, -1)
+  return txt
+
+def calendar_board(month, day):
+  month = str(month)
+  month = month[0].upper() + month[1:3]
+  txt = calendar_board_text()
+  board = np.zeros(txt.shape, dtype='uint8')
+  board = np.where(txt == '', -1, board)
+  board = np.where(txt == month, -1, board)
+  board = np.where(txt == str(day), -1, board)
+  return board.astype('uint8')
+
+class Calendar(Lonpos2D):
+  def __init__(self, month, day):
+    self.piece = {i + 1: p for i, p in enumerate(calendar_pieces())}
+    self.piece_idx = {p.name: i for i, p in self.piece.items()}
+    orientations = {}
+    for i, piece in self.piece.items():
+      coord_list = all_2d_rotations_and_translations(piece.definition)
+      orientations[i] = tuple(np.array(coords) for coords in coord_list)
+    self.orientations = orientations
+    self.set_board(calendar_board(month, day))
+    self.board_text = calendar_board_text()
+    self.month = month
+    self.day = day
+
+  def __repr__(self):
+    return f'Calendar({self.month!r}, {self.day!r})'
+
+  def plot(self, board: Optional[np.ndarray] = None, ax=None) -> None:
+    """Displays the board."""
+    if ax is None:
+      ax = plt.gca()
+    if board is None:
+      board = self.board
+    ax.set_facecolor('lightgray')
+    ax.set_xlim(-.6, board.shape[0] - .4)
+    ax.set_ylim(-.6, board.shape[1] - .4)
+    ax.set_aspect('equal')
+    ax.get_xaxis().set_visible(False)
+    ax.get_yaxis().set_visible(False)
+    for x in range(board.shape[0]):
+      for y in range(board.shape[1]):
+        idx = board[x, y]
+        if idx == 255:
+          text = self.board_text[x, y]
+          if text:
+            ax.text(x, y, self.board_text[x, y], ha='center', va='center')
+          else:
+            ax.add_patch(plt.Rectangle((x-.4, y-.4), .8, .8, color='white',
+                clip_on=False))
+        elif idx:
+          piece = self.piece[idx]
+          ax.add_patch(plt.Rectangle((x-.5, y-.5), 1, 1, facecolor=piece.color,
+              clip_on=False))
+          ax.text(x, y, piece.name, ha='center', va='center', c='grey')

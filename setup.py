@@ -1,10 +1,10 @@
-"""Install lonpos."""
+"""Install lonpos_solver."""
 
 from setuptools import setup
 
 setup(
     name='lonpos_solver',
-    version='0.1',
+    version='0.2',
     description='A Lonpos solver.',
     author='Anton Geraschenko',
     author_email='geraschenko@gmail.com',

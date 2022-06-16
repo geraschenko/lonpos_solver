@@ -11,8 +11,8 @@ for board_type in ['rectangle', 'arrowhead', 'triangle', 'butterfly']:
   for b, i in zip(game.solutions(), range(NUM)):
     solns.append(b)
   assert len(solns) == NUM, (
-      f'Failed to find {NUM} solutions for board shape "{board_type}"')
-  print(f'Found {NUM} solutions for board shape "{board_type}"')
+      f'Failed to find {NUM} solutions for {game}')
+  print(f'Found {NUM} solutions for {game}')
 
 
 # Finding a solution from scratch takes much longer for the 3D version, so
@@ -24,5 +24,15 @@ game.place('I', np.array(((0, 0, 0), (0, 1, 0), (1, 0, 0), (2, 0, 0), (2, 1, 0))
 game.place('F', np.array(((3, 2, 0), (4, 2, 0), (4, 3, 0))))
 game.place('K', np.array(((3, 0, 0), (3, 1, 0), (4, 0, 0), (4, 1, 0))))
 solns = list(game.solutions())
-assert len(solns) == 2, 'Failed to find 2 solutions for the pyramid.'
-print('Found 2 solutions for the pyramid, as expected.')
+assert len(solns) == 2, f'Failed to find 2 solutions for {game}.'
+print(f'Found 2 solutions for {game}, as expected.')
+
+
+# Find solutions for the puzzle-a-day calendar.
+game = lonpos_solver.Calendar('Jun', 15)
+solns = []
+for b, i in zip(game.solutions(), range(NUM)):
+  solns.append(b)
+assert len(solns) == NUM, (
+    f'Failed to find {NUM} solutions for {game}')
+print(f'Found {NUM} solutions for {game}')
